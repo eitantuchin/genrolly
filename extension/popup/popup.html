@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Genrolly</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="logo">G</span>
+        <span class="name">Genrolly</span>
+      </div>
+      <a id="open-options" href="#" class="link">Settings</a>
+    </header>
+
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="scrape" role="tab">Scrape</button>
+      <button class="tab" data-tab="leads" role="tab">Leads</button>
+      <button class="tab" data-tab="emails" role="tab">Emails</button>
+    </nav>
+
+    <main>
+      <!-- Scrape tab -->
+      <section class="panel active" data-panel="scrape">
+        <div class="card">
+          <h2>Course niche</h2>
+          <input id="niche" type="text" placeholder="e.g. beginner Python for data analysts" />
+          <p class="hint">Used to personalize outreach copy.</p>
+        </div>
+
+        <div class="card">
+          <h2>Source</h2>
+          <div id="source-detect" class="source">
+            <span class="dot"></span>
+            <span id="source-label">Detecting current tab…</span>
+          </div>
+          <button id="scrape-btn" class="primary" disabled>Scrape leads from this page</button>
+          <p id="scrape-status" class="status"></p>
+        </div>
+      </section>
+
+      <!-- Leads tab -->
+      <section class="panel" data-panel="leads">
+        <div class="toolbar">
+          <span id="leads-count" class="muted">0 leads</span>
+          <button id="generate-btn" class="primary small" disabled>Generate emails</button>
+        </div>
+        <ul id="leads-list" class="list"></ul>
+        <p id="leads-empty" class="empty">No leads yet — run a scrape from the Scrape tab.</p>
+      </section>
+
+      <!-- Emails tab -->
+      <section class="panel" data-panel="emails">
+        <div class="toolbar">
+          <span id="emails-count" class="muted">0 drafts</span>
+          <button id="send-btn" class="primary small" disabled>Send all</button>
+        </div>
+        <ul id="emails-list" class="list"></ul>
+        <p id="emails-empty" class="empty">No drafts yet — generate emails from the Leads tab.</p>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span id="backend-status" class="muted">Backend: …</span>
+      <span class="muted">v0.1.0</span>
+    </footer>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

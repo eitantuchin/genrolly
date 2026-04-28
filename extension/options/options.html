@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Genrolly — Settings</title>
+    <link rel="stylesheet" href="../popup/popup.css" />
+    <style>
+      body { width: auto; min-height: auto; padding: 24px; max-width: 640px; }
+      h1 { font-size: 20px; margin: 0 0 16px; }
+      label { display: block; font-size: 12px; color: var(--muted); margin: 12px 0 6px; }
+      .row { display: flex; gap: 8px; align-items: center; }
+      .saved { color: var(--success); font-size: 12px; margin-left: 8px; }
+    </style>
+  </head>
+  <body>
+    <h1>Genrolly Settings</h1>
+
+    <div class="card">
+      <h2>Backend</h2>
+      <label for="backendUrl">Backend URL</label>
+      <input id="backendUrl" type="text" placeholder="https://genrolly-backend.up.railway.app" />
+      <label for="apiKey">API key (sent as <code>x-api-key</code>)</label>
+      <input id="apiKey" type="text" placeholder="optional during local dev" />
+      <p class="hint">
+        During local dev, run the FastAPI backend on <code>http://localhost:8000</code>.
+        After deploying to Railway, paste the public URL here.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>Sender identity</h2>
+      <label for="senderName">From name</label>
+      <input id="senderName" type="text" placeholder="Jane @ Pythonacademy" />
+      <label for="senderEmail">From email</label>
+      <input id="senderEmail" type="text" placeholder="jane@yourdomain.com" />
+      <p class="hint">
+        Must be a verified sender on the domain you connect in Resend.
+      </p>
+    </div>
+
+    <div class="row">
+      <button id="save" class="primary small">Save</button>
+      <span id="saved" class="saved" hidden>Saved.</span>
+    </div>
+
+    <script src="options.js"></script>
+  </body>
+</html>
