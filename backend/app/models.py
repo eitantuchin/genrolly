@@ -54,6 +54,20 @@ class HealthResponse(BaseModel):
     services: dict = {}
 
 
-class HealthResponse(BaseModel):
-    status: str = "ok"
-    services: dict
+class CreateCheckoutSessionRequest(BaseModel):
+    price_id: str
+    success_url: str
+    cancel_url: str
+
+
+class CheckoutSessionResponse(BaseModel):
+    session_id: str
+    url: str
+
+
+class SubscriptionStatusResponse(BaseModel):
+    has_subscription: bool
+    status: Optional[str] = None
+    current_period_end: Optional[int] = None
+    plan: Optional[str] = None
+    message: Optional[str] = None

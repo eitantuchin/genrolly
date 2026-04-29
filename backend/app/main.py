@@ -13,7 +13,8 @@ from .models import HealthResponse
 from .routers import emails as emails_router
 from .routers import leads as leads_router
 from .routers import oauth as oauth_router
-from .services import supabase_service
+from .routers import stripe as stripe_router
+from .services import stripe_service, supabase_service
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -29,6 +30,9 @@ if config_errors:
     log.warning("⚠️  Configuration warnings:")
     for error in config_errors:
         log.warning(f"  - {error}")
+
+# Initialize external services
+stripe_service.init_stripe()
 
 app = FastAPI(
     title="Genrolly API",
@@ -47,6 +51,7 @@ app.add_middleware(
 app.include_router(emails_router.router)
 app.include_router(leads_router.router)
 app.include_router(oauth_router.router)
+app.include_router(stripe_router.router)
 
 
 @app.get("/", tags=["meta"])
