@@ -1,7 +1,11 @@
 // Genrolly popup — orchestrates UI, talks to backend, imports leads via Apollo.
 
+const BUILD_ENV = "development"; // Set to "production" for deployed builds
+const PROD_BACKEND_URL = "https://your-production-backend.up.railway.app";
+const DEV_BACKEND_URL = "http://localhost:8000";
+
 const DEFAULTS = {
-  backendUrl: "http://localhost:8000",
+  backendUrl: BUILD_ENV === "production" ? PROD_BACKEND_URL : DEV_BACKEND_URL,
 };
 
 const FILTER_LABELS = {
