@@ -139,6 +139,20 @@ button.primary:hover:not([disabled]) { background: var(--primary-hover); }
 button.primary[disabled] { opacity: 0.5; cursor: not-allowed; }
 button.primary.small { width: auto; padding: 6px 10px; font-size: 12px; }
 
+button.secondary {
+  width: 100%;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 13px;
+}
+button.secondary:hover:not([disabled]) { background: var(--panel); }
+button.secondary[disabled] { opacity: 0.5; cursor: not-allowed; }
+
 .status { color: var(--muted); margin: 8px 0 0; font-size: 12px; min-height: 1em; }
 .status.ok { color: var(--success); }
 .status.err { color: var(--danger); }

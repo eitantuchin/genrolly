@@ -12,7 +12,7 @@ create table if not exists public.leads (
     id            uuid primary key default uuid_generate_v4(),
     user_id       text not null,
     external_id   text not null,           -- id from extension/scraper
-    source        text not null check (source in ('linkedin','youtube','reddit','twitter','manual')),
+    source        text not null check (source in ('apollo','reddit','twitter','manual')),
     name          text not null,
     headline      text,
     location      text,
@@ -36,7 +36,7 @@ create table if not exists public.generated_emails (
     body              text not null,
     status            text not null default 'draft'
                         check (status in ('draft','queued','sent','failed','bounced','replied')),
-    resend_id         text,
+    gmail_message_id  text,
     error             text,
     created_at        timestamptz not null default now(),
     sent_at           timestamptz

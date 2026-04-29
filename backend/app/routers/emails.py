@@ -1,4 +1,4 @@
-"""/api/emails routes — generate drafts and send via Resend."""
+"""/api/emails routes — generate drafts and send via Gmail API."""
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
@@ -10,7 +10,7 @@ from ..models import (
     SendEmailsRequest,
     SendEmailsResponse,
 )
-from ..services import openai_service, resend_service, supabase_service
+from ..services import gmail_service, openai_service, supabase_service
 
 router = APIRouter(prefix="/api/emails", tags=["emails"])
 
@@ -31,11 +31,14 @@ def generate(req: GenerateEmailsRequest, _key: str = Depends(require_api_key)):
 
 
 @router.post("/send", response_model=SendEmailsResponse)
-def send(req: SendEmailsRequest, _key: str = Depends(require_api_key)):
-    sent, failed, details = resend_service.send_many(
+async def send(req: SendEmailsRequest, user_id: str = Depends(require_api_key)):
+    """
+    Send emails via Gmail API.
+    User must have connected their Gmail account via OAuth first.
+    """
+    sent, failed, details = await gmail_service.send_many(
         emails=req.emails,
         leads=req.leads,
-        from_email=req.from_email,
-        from_name=req.from_name,
+        user_id=user_id,
     )
     return SendEmailsResponse(sent=sent, failed=failed, details=details)

@@ -30,10 +30,12 @@ venv.bak/
 .venv/
 
 # Environment Variables
-.env
-.env.local
-.env.*.local
-*.env
+# Ignore actual .env files with secrets (in backend directory)
+backend/.env.development
+backend/.env.production
+
+# Keep template files (these have placeholder values and should be committed)
+# backend/.env.development and backend/.env.production are templates
 
 # MCP Configuration (may contain sensitive credentials)
 .mcp.json
@@ -91,3 +93,10 @@ htmlcov/
 *.bak
 *.swp
 .~*
+
+# Claude
+.claude/
+.aider-desk/
+.skills-lock.json
+.agents/
+.mcp.json

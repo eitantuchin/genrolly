@@ -30,12 +30,22 @@
         </div>
 
         <div class="card">
-          <h2>Source</h2>
+          <h2>Gmail Connection</h2>
+          <div id="gmail-status" class="source">
+            <span class="dot"></span>
+            <span id="gmail-label">Checking connection…</span>
+          </div>
+          <button id="gmail-connect-btn" class="primary">Connect Gmail</button>
+          <p class="hint">Required to send emails from your account.</p>
+        </div>
+
+        <div class="card">
+          <h2>Lead import</h2>
           <div id="source-detect" class="source">
             <span class="dot"></span>
-            <span id="source-label">Detecting current tab…</span>
+            <span id="source-label">Apollo lead import is not configured yet.</span>
           </div>
-          <button id="scrape-btn" class="primary" disabled>Scrape leads from this page</button>
+          <button id="scrape-btn" class="primary" disabled>Import leads via Apollo</button>
           <p id="scrape-status" class="status"></p>
         </div>
       </section>
@@ -47,7 +57,7 @@
           <button id="generate-btn" class="primary small" disabled>Generate emails</button>
         </div>
         <ul id="leads-list" class="list"></ul>
-        <p id="leads-empty" class="empty">No leads yet — run a scrape from the Scrape tab.</p>
+        <p id="leads-empty" class="empty">No leads yet — import leads from Apollo or add them in the backend.</p>
       </section>
 
       <!-- Emails tab -->

@@ -7,8 +7,7 @@ const DEFAULTS = {
 // ---------- State ----------
 const state = {
   niche: "",
-  source: null, // 'linkedin' | 'youtube' | null
-  tabId: null,
+  source: null,
   leads: [],     // { id, source, name, headline, url, snippet }
   emails: [],    // { leadId, subject, body, status }
   backendUrl: DEFAULTS.backendUrl,
@@ -37,38 +36,15 @@ async function saveNiche() {
   await chrome.storage.sync.set({ niche: state.niche });
 }
 
-function detectSourceFromUrl(url) {
-  if (!url) return null;
-  if (/^https?:\/\/(www\.)?linkedin\.com\//i.test(url)) return "linkedin";
-  if (/^https?:\/\/(www\.)?youtube\.com\//i.test(url)) return "youtube";
-  return null;
-}
-
 async function detectSource() {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  state.tabId = tab?.id ?? null;
-  state.source = detectSourceFromUrl(tab?.url || "");
-
   const dot = $("#source-detect .dot");
   const label = $("#source-label");
   const btn = $("#scrape-btn");
 
-  if (state.source === "linkedin") {
-    dot.classList.add("ok");
-    label.textContent = "LinkedIn — ready to scrape search results.";
-    btn.disabled = false;
-    btn.textContent = "Scrape leads from this LinkedIn page";
-  } else if (state.source === "youtube") {
-    dot.classList.add("ok");
-    label.textContent = "YouTube — ready to scrape video comments.";
-    btn.disabled = false;
-    btn.textContent = "Scrape commenters from this video";
-  } else {
-    dot.classList.add("warn");
-    label.textContent = "Open a LinkedIn search or YouTube video to scrape.";
-    btn.disabled = true;
-    btn.textContent = "Scrape leads from this page";
-  }
+  dot.classList.add("warn");
+  label.textContent = "Apollo lead import is not configured yet.";
+  btn.disabled = true;
+  btn.textContent = "Import leads via Apollo";
 }
 
 // ---------- Backend ----------
@@ -88,6 +64,114 @@ async function backendHealth() {
   } catch {
     el.textContent = "Backend: unreachable";
     el.style.color = "var(--danger)";
+  }
+}
+
+// ---------- Gmail OAuth ----------
+async function checkGmailStatus() {
+  const dot = $("#gmail-status .dot");
+  const label = $("#gmail-label");
+  const btn = $("#gmail-connect-btn");
+
+  try {
+    const res = await fetch(`${state.backendUrl}/auth/gmail/status`, {
+      headers: state.apiKey ? { "x-api-key": state.apiKey } : {},
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.connected) {
+        dot.classList.add("ok");
+        label.textContent = `Connected: ${data.email}`;
+        btn.textContent = "Disconnect";
+        btn.classList.remove("primary");
+        btn.classList.add("secondary");
+      } else {
+        dot.classList.add("warn");
+        label.textContent = "Not connected";
+        btn.textContent = "Connect Gmail";
+        btn.classList.add("primary");
+        btn.classList.remove("secondary");
+      }
+    } else {
+      dot.classList.add("warn");
+      label.textContent = "Status unknown";
+    }
+  } catch (e) {
+    dot.classList.add("warn");
+    label.textContent = "Connection error";
+  }
+}
+
+async function connectGmail() {
+  const btn = $("#gmail-connect-btn");
+
+  // Check if already connected (button shows "Disconnect")
+  if (btn.textContent === "Disconnect") {
+    if (!confirm("Disconnect Gmail? You won't be able to send emails.")) return;
+
+    try {
+      await fetch(`${state.backendUrl}/auth/gmail/disconnect`, {
+        method: "POST",
+        headers: state.apiKey ? { "x-api-key": state.apiKey } : {},
+      });
+      await checkGmailStatus();
+    } catch (e) {
+      alert(`Disconnect failed: ${e.message || e}`);
+    }
+    return;
+  }
+
+  // Start OAuth flow
+  btn.disabled = true;
+  btn.textContent = "Opening...";
+
+  try {
+    const res = await fetch(`${state.backendUrl}/auth/gmail/authorize`, {
+      headers: state.apiKey ? { "x-api-key": state.apiKey } : {},
+    });
+
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+
+    // Open OAuth URL in new window
+    const width = 600;
+    const height = 700;
+    const left = (screen.width - width) / 2;
+    const top = (screen.height - height) / 2;
+
+    window.open(
+      data.auth_url,
+      "Gmail OAuth",
+      `width=${width},height=${height},left=${left},top=${top}`
+    );
+
+    // Poll for connection status
+    const pollInterval = setInterval(async () => {
+      const statusRes = await fetch(`${state.backendUrl}/auth/gmail/status`, {
+        headers: state.apiKey ? { "x-api-key": state.apiKey } : {},
+      });
+
+      if (statusRes.ok) {
+        const statusData = await statusRes.json();
+        if (statusData.connected) {
+          clearInterval(pollInterval);
+          await checkGmailStatus();
+        }
+      }
+    }, 2000);
+
+    // Stop polling after 5 minutes
+    setTimeout(() => clearInterval(pollInterval), 300000);
+
+  } catch (e) {
+    alert(`Connection failed: ${e.message || e}`);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Connect Gmail";
   }
 }
 
@@ -253,8 +337,10 @@ async function init() {
 
   await detectSource();
   backendHealth();
+  checkGmailStatus();
 
   $("#niche").addEventListener("input", saveNiche);
+  $("#gmail-connect-btn").addEventListener("click", connectGmail);
   $("#scrape-btn").addEventListener("click", scrape);
   $("#generate-btn").addEventListener("click", generateEmails);
   $("#send-btn").addEventListener("click", sendEmails);

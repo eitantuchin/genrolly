@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Genrolly",
   "version": "0.1.0",
-  "description": "Lead gen for course creators. Scrape LinkedIn & YouTube, generate personalized cold emails with AI, and send.",
+  "description": "Lead gen for course creators. Generate leads from Apollo.io, create personalized cold emails with AI, and send via Gmail.",
   "action": {
     "default_popup": "popup/popup.html",
     "default_icon": {
@@ -29,22 +29,8 @@
     "tabs"
   ],
   "host_permissions": [
-    "https://www.linkedin.com/*",
-    "https://www.youtube.com/*",
     "http://localhost/*",
     "https://*.up.railway.app/*"
-  ],
-  "content_scripts": [
-    {
-      "matches": ["https://www.linkedin.com/*"],
-      "js": ["content/linkedin.js"],
-      "run_at": "document_idle"
-    },
-    {
-      "matches": ["https://www.youtube.com/*"],
-      "js": ["content/youtube.js"],
-      "run_at": "document_idle"
-    }
   ],
   "web_accessible_resources": [
     {

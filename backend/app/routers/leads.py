@@ -7,8 +7,8 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from ..auth import require_api_key
-from ..models import Lead, YouTubeFetchRequest
-from ..services import supabase_service, youtube_service
+from ..models import Lead
+from ..services import supabase_service
 
 router = APIRouter(prefix="/api/leads", tags=["leads"])
 
@@ -25,8 +25,3 @@ class IngestResponse(BaseModel):
 def ingest(req: IngestRequest, key: str = Depends(require_api_key)):
     count = supabase_service.upsert_leads(user_id=key, leads=req.leads) if supabase_service.is_configured() else len(req.leads)
     return IngestResponse(count=count)
-
-
-@router.post("/youtube", response_model=List[Lead])
-def fetch_youtube(req: YouTubeFetchRequest, _key: str = Depends(require_api_key)):
-    return youtube_service.fetch_video_comments(req.video_id, req.max_results)

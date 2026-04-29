@@ -54,65 +54,45 @@ services need to know about, and the schema only takes 30 seconds to apply.
 
 ---
 
-## 3. Resend (email sending)
-
-1. Sign up at <https://resend.com>.
-2. **Domains → Add Domain**. Use a domain you control, e.g. `mail.yourdomain.com`.
-   (Pro tip: never send cold email from your primary domain — use a dedicated
-   send domain so deliverability problems don't poison your main inbox.)
-3. Resend will show DNS records (SPF, DKIM, DMARC). Add them in your registrar
-   (Cloudflare, Namecheap, etc.). Wait until Resend says **Verified**.
-4. **API Keys → Create API Key** with `Sending access` → copy. This is
-   `RESEND_API_KEY`.
-5. Decide on `RESEND_FROM_EMAIL` (e.g. `jane@mail.yourdomain.com`). Resend will
-   only let you send from a verified domain.
-6. **Warmup matters.** For the first 2 weeks, send small batches (10–30 a day),
-   reply to bounces, ask early recipients to reply with anything. Tools like
-   [Smartlead](https://smartlead.ai) or [Instantly](https://instantly.ai) can
-   automate warmup if you scale up. Resend has a [deliverability guide](https://resend.com/docs/dashboard/emails/deliverability) — read it.
-
----
-
-## 4. YouTube Data API
+## 3. Gmail API (email sending)
 
 1. Go to the Google Cloud Console: <https://console.cloud.google.com>.
-2. Create a project named `genrolly`.
-3. **APIs & Services → Library → "YouTube Data API v3" → Enable**.
-4. **APIs & Services → Credentials → Create credentials → API key**. Copy → this
-   is `YOUTUBE_API_KEY`.
-5. Click **Restrict key**:
-   - **API restrictions** → Restrict key → select only "YouTube Data API v3".
-   - **Application restrictions** → "IP addresses" and add Railway's egress IP
-     (you'll get this after Railway deploys; for now leave it open and tighten
-     later).
-6. Quota: the free tier is 10,000 units/day. `commentThreads.list` costs
-   1 unit/request and returns up to 100 comments — plenty for an MVP.
+2. Create or select a project named `genrolly`.
+3. **APIs & Services → Library → Gmail API → Enable**.
+4. **APIs & Services → OAuth consent screen**:
+   - Choose **External** (unless you are using a Google Workspace account).
+   - Fill in app information and developer contact email.
+   - Add these scopes:
+     - `https://www.googleapis.com/auth/gmail.send`
+     - `https://www.googleapis.com/auth/userinfo.email`
+   - Add your email as a test user if the app is in testing mode.
+5. **APIs & Services → Credentials → Create Credentials → OAuth client ID**.
+   - Application type: **Web application**
+   - Name: `Genrolly Web Client`
+   - Authorized redirect URIs:
+     - `http://localhost:8000/auth/gmail/callback`
+     - `https://your-production-domain.com/auth/gmail/callback`
+   - Copy the client ID and secret.
+6. Add these values to `backend/.env`:
+
+```bash
+GOOGLE_CLIENT_ID=your-client-id-here.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-client-secret-here
+GOOGLE_REDIRECT_URI=http://localhost:8000/auth/gmail/callback
+```
 
 ---
 
-## 5. LinkedIn (read this carefully)
+## 4. Apollo lead source
 
-There is no public LinkedIn API for scraping leads. The extension's LinkedIn
-content script reads what you, as a logged-in user, are already looking at —
-which is the most defensible position, but **it's still against LinkedIn's
-User Agreement** if you go beyond reasonable manual browsing speed. Practical
-guidance:
-
-- Don't auto-paginate. Make the user click "Next page" manually.
-- Cap scrapes at small batches (e.g. 25 cards per click).
-- Never store LinkedIn data on a server you operate without the user's clear
-  consent — Genrolly's design only sends to your backend after the user clicks
-  "Generate emails".
-- For scale, switch to a compliant data provider: **PhantomBuster**, **Apify**,
-  **Apollo.io**, or LinkedIn Sales Navigator + a verified-CRM integration. They
-  shoulder the legal risk.
-
-You don't need a LinkedIn account beyond the one you already have. There's
-nothing to "set up" — just be aware of the risk profile.
+Apollo is the primary lead source for this version of the app. Use Apollo.io to
+find and export leads, then import them into the backend or connect your lead
+flows there. This avoids brittle page scraping and keeps the extension focused
+on email generation and sending.
 
 ---
 
-## 6. Stripe (payments — optional for v0)
+## 5. Stripe (payments — optional for v0)
 
 Skip this if you're not charging users yet. When you're ready:
 
@@ -187,9 +167,8 @@ The extension defaults to `http://localhost:8000` — perfect for dev.
 5. Click the icon → **Settings** → set **Backend URL** (`http://localhost:8000`
    for dev or your Railway URL for prod) and **API key** (same value as
    `GENROLLY_API_KEYS`). Save.
-6. Visit a LinkedIn `/search/results/people/` page or a YouTube video. Open the
-   popup → enter your course niche → **Scrape leads** → switch to the Leads tab
-   → **Generate emails**.
+6. Use Apollo or another lead source to collect leads, then open the popup →
+   enter your course niche → **Generate emails** → **Send all**.
 
 You're now using the extension end-to-end against your real backend.
 
@@ -214,14 +193,12 @@ You're now using the extension end-to-end against your real backend.
    - **Screenshots** → at least one 1280×800.
    - **Privacy practices** — be honest about data collection. The store will
      reject extensions that don't match what they actually do. List that the
-     extension reads page content on linkedin.com/youtube.com, sends scraped
-     content to your backend, and stores user-provided settings in
-     `chrome.storage.sync`.
+     extension sends lead data to your backend and stores user-provided settings
+     in `chrome.storage.sync`.
    - **Single purpose** → "Capture leads for course creators".
    - **Justifications for permissions**: `storage` (saves settings/leads),
-     `activeTab` (read the page the user is currently on), `scripting` /
-     `tabs` (run the scraper in the active tab), host permissions for
-     LinkedIn/YouTube (sources of leads), Railway URL (backend).
+     `activeTab` (access the current tab for lead import actions), `scripting` /
+     `tabs` (run the extension logic in the active tab), Railway URL (backend).
 7. **Visibility** → start with **Unlisted** while you test. Switch to **Public**
    when you're confident.
 8. Submit for review. Approval typically takes a few days for a first
@@ -244,7 +221,6 @@ You're now using the extension end-to-end against your real backend.
 | --- | --- |
 | Popup says "Backend: unreachable" | Backend not running, or `Backend URL` setting wrong, or CORS too restrictive. |
 | Backend returns 401 | `x-api-key` in extension settings doesn't match `GENROLLY_API_KEYS` env on the backend. |
-| LinkedIn scrape returns 0 leads | LinkedIn changed class names again (it happens every few months). Update selectors in `extension/content/linkedin.js`. |
-| Resend says "domain not verified" | DNS not propagated yet. Re-check your registrar; DKIM/SPF can take up to 24h. |
+| Lead import not working | The lead source is not configured correctly. Check your Apollo import workflow or backend settings. |
+| Gmail says "not connected" | Connect your Gmail account via the popup's OAuth flow. |
 | OpenAI 429 | Hit your monthly limit, or you forgot to add billing. |
-| YouTube `quotaExceeded` | The 10,000 unit/day cap. Either request a quota increase or fall back to the DOM scraper. |

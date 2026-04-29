@@ -7,7 +7,7 @@ from pydantic import BaseModel, EmailStr, Field
 
 class Lead(BaseModel):
     id: str
-    source: str = Field(..., description="linkedin | youtube | reddit | twitter")
+    source: str = Field(..., description="apollo | reddit | twitter | manual")
     name: str
     headline: Optional[str] = ""
     location: Optional[str] = ""
@@ -48,9 +48,10 @@ class SendEmailsResponse(BaseModel):
     details: List[dict] = []
 
 
-class YouTubeFetchRequest(BaseModel):
-    video_id: str
-    max_results: int = 100
+class HealthResponse(BaseModel):
+    status: str = "ok"
+    environment: Optional[str] = None
+    services: dict = {}
 
 
 class HealthResponse(BaseModel):
