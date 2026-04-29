@@ -6,7 +6,8 @@
   --text: #212529;
   --muted: #6c757d;
   --primary: #5094F8;
-  --primary-hover: #3d7dd4;
+  --primary-hover: #0c43c6;
+  --secondary: #0c43c6;
   --success: #A3FA3F;
   --danger: #dc3545;
   --radius: 10px;
@@ -36,7 +37,7 @@ html, body {
 .brand { display: flex; align-items: center; gap: 8px; }
 .logo {
   width: 22px; height: 22px;
-  background: var(--primary);
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
   color: #fff;
   border-radius: 6px;
   display: inline-flex; align-items: center; justify-content: center;
@@ -86,11 +87,11 @@ main { padding: 12px; }
 }
 .card h2 {
   margin: 0 0 8px;
-  font-size: 12px;
+  font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.6px;
-  color: var(--muted);
-  font-weight: 600;
+  letter-spacing: 0.8px;
+  color: var(--secondary);
+  font-weight: 700;
 }
 
 input[type="text"], textarea {
@@ -126,7 +127,7 @@ textarea { resize: vertical; min-height: 70px; font-family: inherit; }
 
 button.primary {
   width: 100%;
-  background: var(--primary);
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
   border: none;
   color: white;
   padding: 9px 12px;
@@ -135,14 +136,14 @@ button.primary {
   cursor: pointer;
   font-size: 13px;
 }
-button.primary:hover:not([disabled]) { background: var(--primary-hover); }
-button.primary[disabled] { opacity: 0.5; cursor: not-allowed; }
+button.primary:hover:not([disabled]) { opacity: 0.88; }
+button.primary[disabled] { opacity: 0.45; cursor: not-allowed; }
 button.primary.small { width: auto; padding: 6px 10px; font-size: 12px; }
 
 button.secondary {
   width: 100%;
   background: var(--panel-2);
-  border: 1px solid var(--border);
+  border: 1.5px solid var(--border);
   color: var(--text);
   padding: 9px 12px;
   border-radius: 8px;
@@ -150,8 +151,9 @@ button.secondary {
   cursor: pointer;
   font-size: 13px;
 }
-button.secondary:hover:not([disabled]) { background: var(--panel); }
+button.secondary:hover:not([disabled]) { border-color: var(--primary); color: var(--primary); }
 button.secondary[disabled] { opacity: 0.5; cursor: not-allowed; }
+button.secondary.small { width: auto; padding: 6px 10px; font-size: 12px; }
 
 .status { color: var(--muted); margin: 8px 0 0; font-size: 12px; min-height: 1em; }
 .status.ok { color: var(--success); }

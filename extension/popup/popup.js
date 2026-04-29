@@ -1,17 +1,27 @@
-// Genrolly popup — orchestrates UI, talks to content scripts (via background) and the backend.
+// Genrolly popup — orchestrates UI, talks to backend, imports leads via Apollo.
 
 const DEFAULTS = {
   backendUrl: "http://localhost:8000",
 };
 
-// ---------- State ----------
+const FILTER_LABELS = {
+  titles: "job titles",
+  industries: "industries",
+  seniorities: "seniority levels",
+  locations: "locations",
+  employee_ranges: "company sizes",
+};
+
 const state = {
   niche: "",
-  source: null,
-  leads: [],     // { id, source, name, headline, url, snippet }
-  emails: [],    // { leadId, subject, body, status }
+  leads: [],
+  emails: [],
   backendUrl: DEFAULTS.backendUrl,
   apiKey: "",
+  apolloFilters: null,
+  // Deduplication: set of lead IDs + emails already contacted this session
+  contactedLeadIds: new Set(),
+  contactedEmails: new Set(),
 };
 
 // ---------- Helpers ----------
@@ -23,12 +33,55 @@ function setStatus(el, msg, kind = "") {
   el.className = "status" + (kind ? " " + kind : "");
 }
 
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+
+// ---------- Settings & state loading ----------
 async function loadSettings() {
-  const stored = await chrome.storage.sync.get(["backendUrl", "apiKey", "niche"]);
+  const stored = await chrome.storage.sync.get([
+    "backendUrl", "apiKey", "niche", "apolloFilters",
+  ]);
   state.backendUrl = stored.backendUrl || DEFAULTS.backendUrl;
   state.apiKey = stored.apiKey || "";
   state.niche = stored.niche || "";
+  state.apolloFilters = stored.apolloFilters || null;
   $("#niche").value = state.niche;
+}
+
+async function loadContactedIds() {
+  // Load locally cached contacted IDs
+  const stored = await chrome.storage.local.get(["contactedLeadIds", "contactedEmails"]);
+  state.contactedLeadIds = new Set(stored.contactedLeadIds || []);
+  state.contactedEmails = new Set((stored.contactedEmails || []).map((e) => e.toLowerCase()));
+
+  // Sync with backend (best-effort — backend is authoritative)
+  try {
+    const res = await fetch(`${state.backendUrl}/api/leads/contacted-ids`, {
+      headers: state.apiKey ? { "x-api-key": state.apiKey } : {},
+    });
+    if (res.ok) {
+      const data = await res.json();
+      for (const id of data.ids || []) state.contactedLeadIds.add(id);
+      // Persist merged set locally
+      await chrome.storage.local.set({
+        contactedLeadIds: [...state.contactedLeadIds],
+      });
+    }
+  } catch (_) { /* offline or not configured — local cache is sufficient */ }
+}
+
+async function recordContacted(leads) {
+  for (const l of leads) {
+    state.contactedLeadIds.add(l.id);
+    if (l.email) state.contactedEmails.add(l.email.toLowerCase());
+  }
+  await chrome.storage.local.set({
+    contactedLeadIds: [...state.contactedLeadIds],
+    contactedEmails: [...state.contactedEmails],
+  });
 }
 
 async function saveNiche() {
@@ -36,15 +89,37 @@ async function saveNiche() {
   await chrome.storage.sync.set({ niche: state.niche });
 }
 
-async function detectSource() {
-  const dot = $("#source-detect .dot");
-  const label = $("#source-label");
+// ---------- Apollo status display ----------
+function displayApolloStatus() {
+  const dot = $("#apollo-dot");
+  const label = $("#apollo-label");
   const btn = $("#scrape-btn");
+  const summary = $("#apollo-filters-summary");
 
-  dot.classList.add("warn");
-  label.textContent = "Apollo lead import is not configured yet.";
-  btn.disabled = true;
-  btn.textContent = "Import leads via Apollo";
+  if (!state.apolloFilters) {
+    dot.className = "dot warn";
+    label.textContent = "No target profile set — click 'Targets' to configure.";
+    btn.disabled = true;
+    summary.textContent = "";
+    return;
+  }
+
+  const f = state.apolloFilters;
+  const hasFilters = (
+    f.titles?.length || f.industries?.length || f.locations?.length ||
+    f.seniorities?.length || f.employee_ranges?.length
+  );
+
+  dot.className = hasFilters ? "dot ok" : "dot warn";
+  label.textContent = hasFilters ? "Target profile configured" : "Profile is empty — add filters in Targets.";
+  btn.disabled = !hasFilters;
+
+  const parts = [];
+  if (f.titles?.length) parts.push(`${f.titles.length} title${f.titles.length > 1 ? "s" : ""}`);
+  if (f.industries?.length) parts.push(`${f.industries.length} industr${f.industries.length > 1 ? "ies" : "y"}`);
+  if (f.locations?.length) parts.push(f.locations.slice(0, 2).join(", "));
+  if (f.seniorities?.length) parts.push(f.seniorities.join(", "));
+  summary.textContent = parts.length ? parts.join(" · ") : "";
 }
 
 // ---------- Backend ----------
@@ -67,114 +142,6 @@ async function backendHealth() {
   }
 }
 
-// ---------- Gmail OAuth ----------
-async function checkGmailStatus() {
-  const dot = $("#gmail-status .dot");
-  const label = $("#gmail-label");
-  const btn = $("#gmail-connect-btn");
-
-  try {
-    const res = await fetch(`${state.backendUrl}/auth/gmail/status`, {
-      headers: state.apiKey ? { "x-api-key": state.apiKey } : {},
-    });
-
-    if (res.ok) {
-      const data = await res.json();
-      if (data.connected) {
-        dot.classList.add("ok");
-        label.textContent = `Connected: ${data.email}`;
-        btn.textContent = "Disconnect";
-        btn.classList.remove("primary");
-        btn.classList.add("secondary");
-      } else {
-        dot.classList.add("warn");
-        label.textContent = "Not connected";
-        btn.textContent = "Connect Gmail";
-        btn.classList.add("primary");
-        btn.classList.remove("secondary");
-      }
-    } else {
-      dot.classList.add("warn");
-      label.textContent = "Status unknown";
-    }
-  } catch (e) {
-    dot.classList.add("warn");
-    label.textContent = "Connection error";
-  }
-}
-
-async function connectGmail() {
-  const btn = $("#gmail-connect-btn");
-
-  // Check if already connected (button shows "Disconnect")
-  if (btn.textContent === "Disconnect") {
-    if (!confirm("Disconnect Gmail? You won't be able to send emails.")) return;
-
-    try {
-      await fetch(`${state.backendUrl}/auth/gmail/disconnect`, {
-        method: "POST",
-        headers: state.apiKey ? { "x-api-key": state.apiKey } : {},
-      });
-      await checkGmailStatus();
-    } catch (e) {
-      alert(`Disconnect failed: ${e.message || e}`);
-    }
-    return;
-  }
-
-  // Start OAuth flow
-  btn.disabled = true;
-  btn.textContent = "Opening...";
-
-  try {
-    const res = await fetch(`${state.backendUrl}/auth/gmail/authorize`, {
-      headers: state.apiKey ? { "x-api-key": state.apiKey } : {},
-    });
-
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`);
-    }
-
-    const data = await res.json();
-
-    // Open OAuth URL in new window
-    const width = 600;
-    const height = 700;
-    const left = (screen.width - width) / 2;
-    const top = (screen.height - height) / 2;
-
-    window.open(
-      data.auth_url,
-      "Gmail OAuth",
-      `width=${width},height=${height},left=${left},top=${top}`
-    );
-
-    // Poll for connection status
-    const pollInterval = setInterval(async () => {
-      const statusRes = await fetch(`${state.backendUrl}/auth/gmail/status`, {
-        headers: state.apiKey ? { "x-api-key": state.apiKey } : {},
-      });
-
-      if (statusRes.ok) {
-        const statusData = await statusRes.json();
-        if (statusData.connected) {
-          clearInterval(pollInterval);
-          await checkGmailStatus();
-        }
-      }
-    }, 2000);
-
-    // Stop polling after 5 minutes
-    setTimeout(() => clearInterval(pollInterval), 300000);
-
-  } catch (e) {
-    alert(`Connection failed: ${e.message || e}`);
-  } finally {
-    btn.disabled = false;
-    btn.textContent = "Connect Gmail";
-  }
-}
-
 async function callBackend(path, body) {
   const res = await fetch(`${state.backendUrl}${path}`, {
     method: "POST",
@@ -191,31 +158,142 @@ async function callBackend(path, body) {
   return res.json();
 }
 
-// ---------- Scrape ----------
-async function scrape() {
-  const btn = $("#scrape-btn");
-  const statusEl = $("#scrape-status");
-  if (!state.tabId || !state.source) return;
-
-  await saveNiche();
-  btn.disabled = true;
-  setStatus(statusEl, "Scraping page…");
+// ---------- Gmail OAuth ----------
+async function checkGmailStatus() {
+  const dot = $("#gmail-status .dot");
+  const label = $("#gmail-label");
+  const btn = $("#gmail-connect-btn");
 
   try {
-    const response = await chrome.tabs.sendMessage(state.tabId, {
-      type: "GENROLLY_SCRAPE",
-      source: state.source,
+    const res = await fetch(`${state.backendUrl}/auth/gmail/status`, {
+      headers: state.apiKey ? { "x-api-key": state.apiKey } : {},
     });
-    const leads = (response?.leads || []).map((l, i) => ({
-      id: `${Date.now()}-${i}`,
-      source: state.source,
+    if (res.ok) {
+      const data = await res.json();
+      if (data.connected) {
+        dot.className = "dot ok";
+        label.textContent = `Connected: ${data.email}`;
+        btn.textContent = "Disconnect";
+        btn.classList.remove("primary");
+        btn.classList.add("secondary");
+      } else {
+        dot.className = "dot warn";
+        label.textContent = "Not connected";
+        btn.textContent = "Connect Gmail";
+        btn.classList.add("primary");
+        btn.classList.remove("secondary");
+      }
+    } else {
+      dot.className = "dot warn";
+      label.textContent = "Status unknown";
+    }
+  } catch {
+    dot.className = "dot warn";
+    label.textContent = "Connection error";
+  }
+}
+
+async function connectGmail() {
+  const btn = $("#gmail-connect-btn");
+
+  if (btn.textContent === "Disconnect") {
+    if (!confirm("Disconnect Gmail? You won't be able to send emails.")) return;
+    try {
+      await fetch(`${state.backendUrl}/auth/gmail/disconnect`, {
+        method: "POST",
+        headers: state.apiKey ? { "x-api-key": state.apiKey } : {},
+      });
+      await checkGmailStatus();
+    } catch (e) {
+      alert(`Disconnect failed: ${e.message || e}`);
+    }
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "Opening...";
+
+  try {
+    const res = await fetch(`${state.backendUrl}/auth/gmail/authorize`, {
+      headers: state.apiKey ? { "x-api-key": state.apiKey } : {},
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    const width = 600, height = 700;
+    const left = (screen.width - width) / 2;
+    const top = (screen.height - height) / 2;
+    window.open(data.auth_url, "Gmail OAuth", `width=${width},height=${height},left=${left},top=${top}`);
+
+    const poll = setInterval(async () => {
+      const s = await fetch(`${state.backendUrl}/auth/gmail/status`, {
+        headers: state.apiKey ? { "x-api-key": state.apiKey } : {},
+      });
+      if (s.ok) {
+        const d = await s.json();
+        if (d.connected) { clearInterval(poll); await checkGmailStatus(); }
+      }
+    }, 2000);
+    setTimeout(() => clearInterval(poll), 300000);
+  } catch (e) {
+    alert(`Connection failed: ${e.message || e}`);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Connect Gmail";
+  }
+}
+
+// ---------- Apollo Lead Import ----------
+async function importFromApollo() {
+  const btn = $("#scrape-btn");
+  const statusEl = $("#scrape-status");
+  const f = state.apolloFilters;
+  if (!f) return;
+
+  btn.disabled = true;
+  setStatus(statusEl, "Searching Apollo…");
+
+  try {
+    const result = await callBackend("/api/apollo/search", {
+      titles: f.titles?.length ? f.titles : undefined,
+      locations: f.locations?.length ? f.locations : undefined,
+      seniorities: f.seniorities?.length ? f.seniorities : undefined,
+      industries: f.industries?.length ? f.industries : undefined,
+      employee_ranges: f.employee_ranges?.length ? f.employee_ranges : undefined,
+      // Pass local contacted IDs so the backend can merge with its own list
+      exclude_lead_ids: [...state.contactedLeadIds],
+      exclude_emails: [...state.contactedEmails],
+      per_page: 25,
+    });
+
+    const relaxed = result.relaxed_filters || [];
+    const newLeads = (result.leads || []).map((l) => ({
       ...l,
+      id: l.id || `apollo-${Date.now()}-${Math.random().toString(36).slice(2)}`,
     }));
-    state.leads = state.leads.concat(leads);
+
+    // Client-side dedup (belt + suspenders)
+    const existingIds = new Set(state.leads.map((l) => l.id));
+    const fresh = newLeads.filter(
+      (l) => !existingIds.has(l.id) && !state.contactedLeadIds.has(l.id)
+    );
+
+    state.leads = state.leads.concat(fresh);
     await chrome.storage.local.set({ leads: state.leads });
-    setStatus(statusEl, `Found ${leads.length} leads.`, "ok");
-    renderLeads();
-    switchTab("leads");
+
+    // Build status message
+    let msg = `Found ${fresh.length} new lead${fresh.length !== 1 ? "s" : ""}`;
+    if (result.total) msg += ` (${result.total.toLocaleString()} total in Apollo)`;
+    if (relaxed.length) {
+      const names = relaxed.map((k) => FILTER_LABELS[k] || k).join(", ");
+      msg += `. Filters relaxed to get results: ${names} removed.`;
+    }
+    setStatus(statusEl, msg, fresh.length > 0 ? "ok" : "");
+
+    if (fresh.length > 0) {
+      renderLeads();
+      switchTab("leads");
+    }
   } catch (e) {
     setStatus(statusEl, `Error: ${e.message || e}`, "err");
   } finally {
@@ -230,17 +308,22 @@ function renderLeads() {
   const count = $("#leads-count");
   const genBtn = $("#generate-btn");
 
-  count.textContent = `${state.leads.length} leads`;
+  count.textContent = `${state.leads.length} lead${state.leads.length !== 1 ? "s" : ""}`;
   genBtn.disabled = state.leads.length === 0;
   empty.style.display = state.leads.length === 0 ? "block" : "none";
 
   list.innerHTML = "";
   for (const lead of state.leads) {
     const li = document.createElement("li");
+    const location = lead.location ? ` · ${escapeHtml(lead.location)}` : "";
+    const emailRow = lead.email
+      ? `<div class="sub" style="color:var(--primary);">${escapeHtml(lead.email)}</div>`
+      : "";
     li.innerHTML = `
       <div class="title">${escapeHtml(lead.name || "(unknown)")}</div>
-      <div class="sub">${escapeHtml(lead.source)} · ${escapeHtml(lead.headline || "")}</div>
-      ${lead.snippet ? `<div class="body">${escapeHtml(lead.snippet)}</div>` : ""}
+      <div class="sub">${escapeHtml(lead.headline || "")}${location}</div>
+      ${lead.snippet ? `<div class="sub">${escapeHtml(lead.snippet)}</div>` : ""}
+      ${emailRow}
     `;
     list.appendChild(li);
   }
@@ -252,7 +335,7 @@ function renderEmails() {
   const count = $("#emails-count");
   const sendBtn = $("#send-btn");
 
-  count.textContent = `${state.emails.length} drafts`;
+  count.textContent = `${state.emails.length} draft${state.emails.length !== 1 ? "s" : ""}`;
   sendBtn.disabled = state.emails.length === 0;
   empty.style.display = state.emails.length === 0 ? "block" : "none";
 
@@ -267,12 +350,6 @@ function renderEmails() {
     `;
     list.appendChild(li);
   }
-}
-
-function escapeHtml(s) {
-  return String(s ?? "")
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
 
 // ---------- Generate emails ----------
@@ -305,18 +382,45 @@ async function sendEmails() {
   if (!confirm(`Send ${state.emails.length} email(s)?`)) return;
   btn.disabled = true;
   btn.textContent = "Sending…";
+
   try {
     const result = await callBackend("/api/emails/send", {
       emails: state.emails,
       leads: state.leads,
     });
+
+    // Record successfully sent leads so they're never emailed again
+    const sentLeadIds = (result.details || [])
+      .filter((d) => d.ok)
+      .map((d) => d.leadId);
+    const sentLeads = state.leads.filter((l) => sentLeadIds.includes(l.id));
+    if (sentLeads.length) await recordContacted(sentLeads);
+
     alert(`Sent: ${result.sent}, failed: ${result.failed}`);
+
+    // Clear sent drafts from state
+    const sentSet = new Set(sentLeadIds);
+    state.emails = state.emails.filter((e) => !sentSet.has(e.leadId));
+    state.leads = state.leads.filter((l) => !sentSet.has(l.id));
+    await chrome.storage.local.set({ leads: state.leads, emails: state.emails });
+    renderLeads();
+    renderEmails();
   } catch (e) {
     alert(`Send failed: ${e.message || e}`);
   } finally {
     btn.disabled = false;
     btn.textContent = "Send all";
   }
+}
+
+// ---------- Clear leads ----------
+async function clearLeads() {
+  if (!confirm("Clear all leads and drafts?")) return;
+  state.leads = [];
+  state.emails = [];
+  await chrome.storage.local.set({ leads: [], emails: [] });
+  renderLeads();
+  renderEmails();
 }
 
 // ---------- Tabs ----------
@@ -328,29 +432,53 @@ function switchTab(name) {
 // ---------- Init ----------
 async function init() {
   await loadSettings();
-  // Restore prior session
   const stored = await chrome.storage.local.get(["leads", "emails"]);
   state.leads = stored.leads || [];
   state.emails = stored.emails || [];
   renderLeads();
   renderEmails();
 
-  await detectSource();
+  displayApolloStatus();
   backendHealth();
   checkGmailStatus();
+  loadContactedIds(); // async, non-blocking
 
   $("#niche").addEventListener("input", saveNiche);
   $("#gmail-connect-btn").addEventListener("click", connectGmail);
-  $("#scrape-btn").addEventListener("click", scrape);
+  $("#scrape-btn").addEventListener("click", importFromApollo);
   $("#generate-btn").addEventListener("click", generateEmails);
   $("#send-btn").addEventListener("click", sendEmails);
+  $("#clear-leads-btn").addEventListener("click", clearLeads);
+
   $("#open-options").addEventListener("click", (e) => {
     e.preventDefault();
     chrome.runtime.openOptionsPage();
   });
+
+  $("#open-onboarding").addEventListener("click", (e) => {
+    e.preventDefault();
+    chrome.tabs.create({ url: chrome.runtime.getURL("onboarding/onboarding.html") });
+  });
+
+  $("#edit-targets").addEventListener("click", (e) => {
+    e.preventDefault();
+    chrome.tabs.create({ url: chrome.runtime.getURL("onboarding/onboarding.html") });
+  });
+
   $$(".tab").forEach((t) =>
     t.addEventListener("click", () => switchTab(t.dataset.tab))
   );
+
+  chrome.storage.onChanged.addListener((changes) => {
+    if (changes.apolloFilters) {
+      state.apolloFilters = changes.apolloFilters.newValue;
+      displayApolloStatus();
+    }
+    if (changes.niche) {
+      state.niche = changes.niche.newValue;
+      $("#niche").value = state.niche;
+    }
+  });
 }
 
 init();

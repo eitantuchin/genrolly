@@ -10,6 +10,7 @@ from fastapi.responses import FileResponse
 
 from .config import get_settings
 from .models import HealthResponse
+from .routers import apollo as apollo_router
 from .routers import emails as emails_router
 from .routers import leads as leads_router
 from .routers import oauth as oauth_router
@@ -48,6 +49,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(apollo_router.router)
 app.include_router(emails_router.router)
 app.include_router(leads_router.router)
 app.include_router(oauth_router.router)

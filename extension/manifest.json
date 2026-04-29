@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Genrolly",
   "version": "0.1.0",
-  "description": "Lead gen for course creators. Generate leads from Apollo.io, create personalized cold emails with AI, and send via Gmail.",
+  "description": "Get more students for your course without guessing who to reach out to. Find high-value leads with personalized outreach.",
   "action": {
     "default_popup": "popup/popup.html",
     "default_icon": {
@@ -34,7 +34,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["popup/*", "options/*"],
+      "resources": ["popup/*", "options/*", "onboarding/*"],
       "matches": ["<all_urls>"]
     }
   ]

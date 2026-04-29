@@ -11,17 +11,20 @@
         <span class="logo">G</span>
         <span class="name">Genrolly</span>
       </div>
-      <a id="open-options" href="#" class="link">Settings</a>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <a id="open-onboarding" href="#" class="link" title="Lead settings">Targets</a>
+        <a id="open-options" href="#" class="link">Settings</a>
+      </div>
     </header>
 
     <nav class="tabs" role="tablist">
-      <button class="tab active" data-tab="scrape" role="tab">Scrape</button>
+      <button class="tab active" data-tab="scrape" role="tab">Import</button>
       <button class="tab" data-tab="leads" role="tab">Leads</button>
       <button class="tab" data-tab="emails" role="tab">Emails</button>
     </nav>
 
     <main>
-      <!-- Scrape tab -->
+      <!-- Import tab -->
       <section class="panel active" data-panel="scrape">
         <div class="card">
           <h2>Course niche</h2>
@@ -40,13 +43,17 @@
         </div>
 
         <div class="card">
-          <h2>Lead import</h2>
-          <div id="source-detect" class="source">
-            <span class="dot"></span>
-            <span id="source-label">Apollo lead import is not configured yet.</span>
+          <h2>Apollo Lead Import</h2>
+          <div id="apollo-status" class="source">
+            <span class="dot" id="apollo-dot"></span>
+            <span id="apollo-label">Loading target profile…</span>
           </div>
-          <button id="scrape-btn" class="primary" disabled>Import leads via Apollo</button>
-          <p id="scrape-status" class="status"></p>
+          <div id="apollo-filters-summary" class="hint" style="margin-top:6px;margin-bottom:8px;"></div>
+          <button id="scrape-btn" class="primary" disabled>Import leads from Apollo</button>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;">
+            <p id="scrape-status" class="status" style="margin:0;"></p>
+            <a id="edit-targets" href="#" class="link" style="font-size:11px;">Edit targets</a>
+          </div>
         </div>
       </section>
 
@@ -54,10 +61,13 @@
       <section class="panel" data-panel="leads">
         <div class="toolbar">
           <span id="leads-count" class="muted">0 leads</span>
-          <button id="generate-btn" class="primary small" disabled>Generate emails</button>
+          <div style="display:flex;gap:6px;">
+            <button id="clear-leads-btn" class="secondary small">Clear</button>
+            <button id="generate-btn" class="primary small" disabled>Generate emails</button>
+          </div>
         </div>
         <ul id="leads-list" class="list"></ul>
-        <p id="leads-empty" class="empty">No leads yet — import leads from Apollo or add them in the backend.</p>
+        <p id="leads-empty" class="empty">No leads yet — import from Apollo in the Import tab.</p>
       </section>
 
       <!-- Emails tab -->

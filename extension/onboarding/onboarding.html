@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Welcome to Genrolly</title>
+  <link rel="stylesheet" href="onboarding.css" />
+</head>
+<body>
+
+  <!-- Progress bar -->
+  <div class="progress-track">
+    <div id="progress-bar" class="progress-bar"></div>
+  </div>
+
+  <div class="page">
+    <div class="card">
+
+      <!-- Step 1: Welcome -->
+      <div class="step active" data-step="1">
+        <div class="welcome-logo">G</div>
+        <h1 class="welcome-title">Welcome to Genrolly</h1>
+        <p class="welcome-sub">Find the right leads for your online course — automatically. Takes 2 minutes to set up.</p>
+        <div class="features">
+          <div class="feature-row">
+            <div class="feature-icon">🎯</div>
+            <span>Searches Apollo's database of 275M+ professionals</span>
+          </div>
+          <div class="feature-row">
+            <div class="feature-icon">✉️</div>
+            <span>Generates personalized cold emails with AI</span>
+          </div>
+          <div class="feature-row">
+            <div class="feature-icon">📤</div>
+            <span>Sends from your own Gmail account</span>
+          </div>
+        </div>
+        <button class="btn-primary" id="start-btn">Let's Get Started →</button>
+      </div>
+
+      <!-- Step 2: Your Course -->
+      <div class="step" data-step="2">
+        <div class="step-badge"><span class="dot"></span>Step 1 of 5</div>
+        <h2 class="step-title">Tell us about your course</h2>
+        <p class="step-sub">This helps us write personalized outreach on your behalf and find the right audience.</p>
+        <div class="form-group">
+          <label>Course or product name</label>
+          <input id="course-name" type="text" placeholder="e.g. Mastery Marketing Academy" />
+        </div>
+        <div class="form-group">
+          <label>Topic / niche <span style="color:#e74c3c; font-size:11px;">required</span></label>
+          <input id="course-niche" type="text" placeholder="e.g. beginner Python for data analysts" />
+        </div>
+        <div class="form-group">
+          <label>Your website <span class="opt">(optional)</span></label>
+          <input id="course-url" type="text" placeholder="https://yoursite.com" />
+        </div>
+      </div>
+
+      <!-- Step 3: Target Job Titles -->
+      <div class="step" data-step="3">
+        <div class="step-badge"><span class="dot"></span>Step 2 of 5</div>
+        <h2 class="step-title">Who do you want to reach?</h2>
+        <p class="step-sub">Select job titles that match your ideal customer. You can pick multiple or add your own.</p>
+        <div id="titles-chips" class="chips-grid"></div>
+        <div class="form-group" style="margin-top:14px;">
+          <input id="custom-title" type="text" placeholder="Type a custom title and press Enter ↵" />
+        </div>
+        <div id="selected-titles" class="selected-tags"></div>
+      </div>
+
+      <!-- Step 4: Target Industries -->
+      <div class="step" data-step="4">
+        <div class="step-badge"><span class="dot"></span>Step 3 of 5</div>
+        <h2 class="step-title">What industries are they in?</h2>
+        <p class="step-sub">Pick the industries where your best customers work. Select all that apply.</p>
+        <div id="industries-chips" class="chips-grid scrollable"></div>
+      </div>
+
+      <!-- Step 5: Location & Seniority -->
+      <div class="step" data-step="5">
+        <div class="step-badge"><span class="dot"></span>Step 4 of 5</div>
+        <h2 class="step-title">Location & seniority</h2>
+        <p class="step-sub">Narrow your search by geography and career level.</p>
+        <div class="form-group">
+          <label>Location <span class="opt">(optional)</span></label>
+          <input id="location-input" type="text" placeholder="e.g. United States, New York, Canada" />
+          <p class="hint">Separate multiple locations with commas.</p>
+        </div>
+        <div style="margin-top:18px;">
+          <span class="section-label">Seniority levels <span class="opt" style="font-weight:400;">(optional)</span></span>
+          <div id="seniority-chips" class="chips-grid"></div>
+        </div>
+      </div>
+
+      <!-- Step 6: Company Size -->
+      <div class="step" data-step="6">
+        <div class="step-badge"><span class="dot"></span>Step 5 of 5</div>
+        <h2 class="step-title">Company size</h2>
+        <p class="step-sub">Filter leads by the number of employees at their company. Select all sizes you're open to.</p>
+        <div id="employee-chips" class="chips-grid"></div>
+      </div>
+
+      <!-- Step 7: Backend Setup -->
+      <div class="step" data-step="7">
+        <div class="step-badge"><span class="dot"></span>Almost done!</div>
+        <h2 class="step-title">Connect your backend</h2>
+        <p class="step-sub">Enter your Genrolly backend URL and API key so the extension can fetch leads and send emails.</p>
+        <div class="form-group">
+          <label>Backend URL</label>
+          <input id="backend-url" type="text" placeholder="https://genrolly-backend.up.railway.app" />
+          <p class="hint">During local dev use <code style="background:#f4f7fe;padding:2px 5px;border-radius:4px;font-size:11px;">http://localhost:8000</code></p>
+        </div>
+        <div class="form-group">
+          <label>API Key <span class="opt">(optional in dev)</span></label>
+          <input id="api-key" type="text" placeholder="your-api-key" />
+        </div>
+        <div id="backend-check" style="min-height:20px;font-size:13px;color:var(--muted);margin-top:4px;"></div>
+      </div>
+
+      <!-- Step 8: All Set -->
+      <div class="step" data-step="8">
+        <div class="success-circle">✓</div>
+        <h2 class="step-title" style="text-align:center;">You're all set!</h2>
+        <p class="step-sub" style="text-align:center;">Your lead profile is saved. Open the Genrolly popup to start importing and emailing leads.</p>
+        <div id="profile-summary" class="summary-card"></div>
+        <button class="btn-primary" id="finish-btn">Open Genrolly →</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Bottom navigation (hidden on welcome + final step) -->
+  <div class="nav-bar" id="nav-bar">
+    <div class="nav-inner">
+      <button class="btn-ghost" id="back-btn">← Back</button>
+      <button class="btn-next" id="next-btn">Continue →</button>
+    </div>
+  </div>
+
+  <script type="module" src="onboarding.js"></script>
+</body>
+</html>
