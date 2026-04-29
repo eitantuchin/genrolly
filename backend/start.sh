@@ -8,12 +8,11 @@ if [ -f requirements.txt ]; then
     pip install -r requirements.txt
 fi
 
-# Start server with Gunicorn
-# Using 1 worker for Railway (adjust based on plan)
-exec gunicorn app.main:app \
-  --workers 1 \
-  --worker-class uvicorn.workers.UvicornWorker \
-  --bind 0.0.0.0:${PORT:-8000} \
-  --access-logfile - \
-  --error-logfile - \
-  --log-level info
+# Check environment and run appropriate start script
+if [ "$ENV" = "development" ] || [ "$RAILWAY_ENVIRONMENT" = "development" ]; then
+    echo "Running in DEVELOPMENT mode..."
+    exec ./start-dev.sh
+else
+    echo "Running in PRODUCTION mode..."
+    exec ./start-prod.sh
+fi
