@@ -15,7 +15,7 @@ from .routers import emails as emails_router
 from .routers import leads as leads_router
 from .routers import oauth as oauth_router
 from .routers import stripe as stripe_router
-from .services import stripe_service, supabase_service
+from .services import scheduler_service, stripe_service, supabase_service
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -34,6 +34,7 @@ if config_errors:
 
 # Initialize external services
 stripe_service.init_stripe()
+scheduler_service.start_scheduler()
 
 app = FastAPI(
     title="Genrolly API",
@@ -81,3 +82,10 @@ def health():
             "stripe": bool(settings.STRIPE_SECRET_KEY),
         },
     )
+
+
+@app.on_event("shutdown")
+def shutdown_event():
+    """Stop the scheduler on app shutdown."""
+    scheduler_service.stop_scheduler()
+    log.info("Scheduler stopped on app shutdown")

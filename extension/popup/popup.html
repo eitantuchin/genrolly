@@ -20,6 +20,7 @@
     <nav class="tabs" role="tablist">
       <button class="tab active" data-tab="scrape" role="tab">Import</button>
       <button class="tab" data-tab="leads" role="tab">Leads</button>
+      <button class="tab" data-tab="template" role="tab">Template</button>
       <button class="tab" data-tab="emails" role="tab">Emails</button>
     </nav>
 
@@ -68,6 +69,41 @@
         </div>
         <ul id="leads-list" class="list"></ul>
         <p id="leads-empty" class="empty">No leads yet — import from Apollo in the Import tab.</p>
+      </section>
+
+      <!-- Template customization tab -->
+      <section class="panel" data-panel="template">
+        <div class="card">
+          <h2>Email subject line</h2>
+          <input
+            id="template-subject"
+            type="text"
+            placeholder="Leave blank to auto-generate with AI"
+          />
+          <p class="hint">If blank, AI will create personalized subjects for each lead.</p>
+        </div>
+
+        <div class="card">
+          <h2>Email message</h2>
+          <textarea
+            id="template-message"
+            placeholder="Leave blank to auto-generate with AI&#10;Use {{name}}, {{headline}}, {{company}} as placeholders"
+          ></textarea>
+          <p class="hint">If blank, AI will write personalized messages. Available placeholders: <code>{{name}}</code>, <code>{{headline}}</code>, <code>{{company}}</code></p>
+        </div>
+
+        <div class="card">
+          <h2>Images (optional)</h2>
+          <button id="add-image-btn" class="secondary small">+ Add image URL</button>
+          <ul id="image-urls-list" class="list" style="max-height:150px;"></ul>
+          <p class="hint">If no images provided, emails will be text-only.</p>
+        </div>
+
+        <div class="card">
+          <p class="hint" style="background:#f0f4ff;padding:8px;border-radius:6px;margin:0;">
+            💡 <strong>Tip:</strong> Leave fields blank to let AI write personalized content for each lead. Mix custom + AI-generated for best results!
+          </p>
+        </div>
       </section>
 
       <!-- Emails tab -->

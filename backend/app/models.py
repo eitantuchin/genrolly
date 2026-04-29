@@ -16,12 +16,19 @@ class Lead(BaseModel):
     email: Optional[EmailStr] = None
 
 
+class EmailTemplate(BaseModel):
+    custom_subject: Optional[str] = None
+    custom_message: Optional[str] = None
+    image_urls: Optional[List[str]] = []
+
+
 class GenerateEmailsRequest(BaseModel):
     niche: str = Field(..., description="Course niche, e.g. 'beginner Python for analysts'")
     leads: List[Lead]
     tone: str = "friendly, concise"
     course_name: Optional[str] = None
     cta_url: Optional[str] = None
+    template: Optional[EmailTemplate] = None
 
 
 class GeneratedEmail(BaseModel):

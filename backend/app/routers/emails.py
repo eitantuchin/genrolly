@@ -23,6 +23,7 @@ def generate(req: GenerateEmailsRequest, _key: str = Depends(require_api_key)):
         tone=req.tone,
         course_name=req.course_name,
         cta_url=req.cta_url,
+        template=req.template,
     )
     if supabase_service.is_configured():
         supabase_service.insert_emails(user_id=_key, emails=drafts)

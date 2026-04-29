@@ -22,6 +22,12 @@ const state = {
   // Deduplication: set of lead IDs + emails already contacted this session
   contactedLeadIds: new Set(),
   contactedEmails: new Set(),
+  // Email template customization
+  template: {
+    custom_subject: "",
+    custom_message: "",
+    image_urls: [],
+  },
 };
 
 // ---------- Helpers ----------
@@ -42,12 +48,13 @@ function escapeHtml(s) {
 // ---------- Settings & state loading ----------
 async function loadSettings() {
   const stored = await chrome.storage.sync.get([
-    "backendUrl", "apiKey", "niche", "apolloFilters",
+    "backendUrl", "apiKey", "niche", "apolloFilters", "template",
   ]);
   state.backendUrl = stored.backendUrl || DEFAULTS.backendUrl;
   state.apiKey = stored.apiKey || "";
   state.niche = stored.niche || "";
   state.apolloFilters = stored.apolloFilters || null;
+  state.template = stored.template || { custom_subject: "", custom_message: "", image_urls: [] };
   $("#niche").value = state.niche;
 }
 
@@ -359,9 +366,11 @@ async function generateEmails() {
   btn.disabled = true;
   btn.textContent = "Generating…";
   try {
+    const template = await getTemplate();
     const result = await callBackend("/api/emails/generate", {
       niche: state.niche,
       leads: state.leads,
+      template: template,
     });
     state.emails = result.emails || [];
     await chrome.storage.local.set({ emails: state.emails });
@@ -437,6 +446,7 @@ async function init() {
   state.emails = stored.emails || [];
   renderLeads();
   renderEmails();
+  loadTemplateUI();
 
   displayApolloStatus();
   backendHealth();
@@ -449,6 +459,11 @@ async function init() {
   $("#generate-btn").addEventListener("click", generateEmails);
   $("#send-btn").addEventListener("click", sendEmails);
   $("#clear-leads-btn").addEventListener("click", clearLeads);
+
+  // Template event listeners
+  $("#template-subject").addEventListener("change", saveTemplate);
+  $("#template-message").addEventListener("change", saveTemplate);
+  $("#add-image-btn").addEventListener("click", promptAddImageUrl);
 
   $("#open-options").addEventListener("click", (e) => {
     e.preventDefault();
@@ -478,7 +493,65 @@ async function init() {
       state.niche = changes.niche.newValue;
       $("#niche").value = state.niche;
     }
+    if (changes.template) {
+      state.template = changes.template.newValue;
+      loadTemplateUI();
+    }
   });
+}
+
+// ---------- Template management ----------
+function saveTemplate() {
+  state.template.custom_subject = $("#template-subject").value;
+  state.template.custom_message = $("#template-message").value;
+  chrome.storage.sync.set({ template: state.template });
+}
+
+function loadTemplateUI() {
+  $("#template-subject").value = state.template.custom_subject || "";
+  $("#template-message").value = state.template.custom_message || "";
+  renderImageUrls();
+}
+
+function renderImageUrls() {
+  const list = $("#image-urls-list");
+  list.innerHTML = "";
+  for (const url of state.template.image_urls) {
+    const li = document.createElement("li");
+    li.style.padding = "6px";
+    li.style.fontSize = "11px";
+    li.innerHTML = `
+      <div style="word-break:break-all;margin-bottom:4px;">${escapeHtml(url)}</div>
+      <button class="secondary small" style="width:auto;" onclick="window.removeImageUrl('${escapeHtml(url)}')">Remove</button>
+    `;
+    list.appendChild(li);
+  }
+}
+
+window.removeImageUrl = function(url) {
+  state.template.image_urls = state.template.image_urls.filter(u => u !== url);
+  saveTemplate();
+  renderImageUrls();
+}
+
+function promptAddImageUrl() {
+  const url = prompt("Enter image URL:");
+  if (url && url.trim()) {
+    if (!state.template.image_urls.includes(url.trim())) {
+      state.template.image_urls.push(url.trim());
+      saveTemplate();
+      renderImageUrls();
+    }
+  }
+}
+
+async function getTemplate() {
+  saveTemplate();
+  return {
+    custom_subject: state.template.custom_subject || null,
+    custom_message: state.template.custom_message || null,
+    image_urls: state.template.image_urls.length > 0 ? state.template.image_urls : null,
+  };
 }
 
 init();

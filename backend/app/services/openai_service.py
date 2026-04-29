@@ -3,12 +3,12 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import List
+from typing import List, Optional
 
 from openai import OpenAI
 
 from ..config import get_settings
-from ..models import GeneratedEmail, Lead
+from ..models import EmailTemplate, GeneratedEmail, Lead
 
 log = logging.getLogger(__name__)
 
@@ -52,6 +52,7 @@ def generate_emails(
     tone: str = "friendly, concise",
     course_name: str | None = None,
     cta_url: str | None = None,
+    template: Optional[EmailTemplate] = None,
 ) -> List[GeneratedEmail]:
     client = _client()
     if client is None:
@@ -62,45 +63,82 @@ def generate_emails(
     out: List[GeneratedEmail] = []
 
     for lead in leads:
-        user_prompt = json.dumps(
-            {
-                "lead": {
-                    "name": lead.name,
-                    "headline": lead.headline,
-                    "source": lead.source,
-                    "snippet": lead.snippet,
-                    "url": lead.url,
-                },
+        # Use custom subject if provided
+        if template and template.custom_subject:
+            subject = template.custom_subject
+        else:
+            # Generate subject using OpenAI
+            user_prompt = json.dumps({
+                "lead": lead.dict(),
                 "course": {
                     "niche": niche,
                     "name": course_name,
-                    "cta_url": cta_url,
                     "tone": tone,
                 },
-                "instructions": "Return JSON: {\"subject\": string, \"body\": string}.",
-            }
-        )
-        try:
-            resp = client.chat.completions.create(
-                model=s.OPENAI_MODEL,
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": user_prompt},
-                ],
-                response_format={"type": "json_object"},
-                temperature=0.7,
-            )
-            payload = json.loads(resp.choices[0].message.content or "{}")
-            out.append(
-                GeneratedEmail(
-                    leadId=lead.id,
-                    subject=payload.get("subject", f"Quick thought on {niche}"),
-                    body=payload.get("body", ""),
-                    status="draft",
+                "instructions": "Return JSON: {\"subject\": string} - a short email subject line.",
+            })
+            try:
+                resp = client.chat.completions.create(
+                    model=s.OPENAI_MODEL,
+                    messages=[
+                        {"role": "system", "content": "You write concise subject lines for cold emails."},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    response_format={"type": "json_object"},
+                    temperature=0.7,
                 )
+                payload = json.loads(resp.choices[0].message.content or "{}")
+                subject = payload.get("subject", f"Quick thought on {niche}")
+            except Exception as e:
+                log.exception("Failed to generate subject for lead %s", lead.id)
+                subject = f"Quick thought on {niche}"
+
+        # Use custom message if provided
+        if template and template.custom_message:
+            body = template.custom_message
+        else:
+            # Generate body using OpenAI
+            user_prompt = json.dumps(
+                {
+                    "lead": {
+                        "name": lead.name,
+                        "headline": lead.headline,
+                        "source": lead.source,
+                        "snippet": lead.snippet,
+                        "url": lead.url,
+                    },
+                    "course": {
+                        "niche": niche,
+                        "name": course_name,
+                        "cta_url": cta_url,
+                        "tone": tone,
+                    },
+                    "instructions": "Return JSON: {\"body\": string}. Write a personalized cold email body (max 90 words).",
+                }
             )
-        except Exception as e:
-            log.exception("OpenAI generate failed for lead %s", lead.id)
-            out.append(_fallback_draft(lead, niche))
+            try:
+                resp = client.chat.completions.create(
+                    model=s.OPENAI_MODEL,
+                    messages=[
+                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    response_format={"type": "json_object"},
+                    temperature=0.7,
+                )
+                payload = json.loads(resp.choices[0].message.content or "{}")
+                body = payload.get("body", "")
+            except Exception as e:
+                log.exception("OpenAI generate failed for lead %s", lead.id)
+                body = _fallback_draft(lead, niche).body
+
+        out.append(
+            GeneratedEmail(
+                leadId=lead.id,
+                subject=subject,
+                body=body,
+                status="draft",
+            )
+        )
 
     return out

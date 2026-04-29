@@ -218,3 +218,109 @@ async def search_with_relaxation(
 
 def _total(result: Dict[str, Any]) -> int:
     return result.get("pagination", {}).get("total_entries", 0)
+
+
+async def get_email_for_person(
+    api_key: str,
+    person_id: str,
+    name: Optional[str] = None,
+    title: Optional[str] = None,
+    organization_name: Optional[str] = None,
+    domain: Optional[str] = None,
+) -> Optional[str]:
+    """
+    Use the match/enrich endpoint to get email for a specific person.
+    Returns email if found, None if not.
+    """
+    payload: Dict[str, Any] = {}
+    if name:
+        payload["first_name"] = name.split()[0] if name else None
+        payload["last_name"] = " ".join(name.split()[1:]) if len(name.split()) > 1 else None
+    if title:
+        payload["title"] = title
+    if organization_name:
+        payload["organization_name"] = organization_name
+    if domain:
+        payload["domain"] = domain
+
+    async with httpx.AsyncClient() as client:
+        try:
+            resp = await client.post(
+                f"{APOLLO_BASE}/people/match",
+                json=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "X-Api-Key": api_key,
+                    "Cache-Control": "no-cache",
+                },
+                timeout=30.0,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            return data.get("person", {}).get("email")
+        except Exception as e:
+            log.error(f"Failed to get email via match endpoint: {e}")
+            return None
+
+
+async def search_and_enrich_leads(
+    api_key: str,
+    titles: Optional[List[str]] = None,
+    locations: Optional[List[str]] = None,
+    seniorities: Optional[List[str]] = None,
+    industries: Optional[List[str]] = None,
+    employee_ranges: Optional[List[str]] = None,
+    keywords: Optional[str] = None,
+    page: int = 1,
+    per_page: int = 10,
+    exclude_lead_ids: Optional[List[str]] = None,
+    exclude_emails: Optional[List[str]] = None,
+) -> List[Dict[str, Any]]:
+    """
+    Search for leads, then try to enrich each with an email using the match endpoint.
+    If a match fails, try the next person in the result set.
+    Returns list of enriched leads with emails.
+    """
+    result, relaxed = await search_with_relaxation(
+        api_key=api_key,
+        titles=titles,
+        locations=locations,
+        seniorities=seniorities,
+        industries=industries,
+        employee_ranges=employee_ranges,
+        keywords=keywords,
+        page=page,
+        per_page=per_page,
+        exclude_lead_ids=exclude_lead_ids,
+        exclude_emails=exclude_emails,
+    )
+
+    people = result.get("people", [])
+    enriched = []
+
+    for person in people:
+        email = person.get("email")  # May already have email from search
+        if not email:
+            # Try to get email via match endpoint
+            email = await get_email_for_person(
+                api_key=api_key,
+                person_id=person.get("id"),
+                name=person.get("name"),
+                title=person.get("title"),
+                organization_name=person.get("organization_name"),
+                domain=person.get("organization_domain"),
+            )
+
+        if email:
+            enriched.append({
+                "id": person.get("id"),
+                "name": person.get("name"),
+                "headline": person.get("title"),
+                "location": person.get("city"),
+                "url": person.get("linkedin_url"),
+                "email": email,
+                "source": "apollo",
+                "snippet": f"{person.get('title')} at {person.get('organization_name')}",
+            })
+
+    return enriched

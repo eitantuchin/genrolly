@@ -87,6 +87,54 @@ create trigger leads_set_updated_at
 before update on public.leads
 for each row execute function public.set_updated_at();
 
+-- ─────────────── user_settings ───────────────
+-- Stores Apollo filters and email template server-side so the scheduler can use them.
+create table if not exists public.user_settings (
+    user_id        text primary key,
+    apollo_filters jsonb not null default '{}',
+    email_template jsonb not null default '{}',
+    created_at     timestamptz not null default now(),
+    updated_at     timestamptz not null default now()
+);
+
+-- ─────────────── user_apollo_state ───────────────
+-- Persists each user's search cursor so each cron run continues from where it left off.
+create table if not exists public.user_apollo_state (
+    user_id         text primary key,
+    tried_lead_ids  text[] not null default '{}',
+    current_page    int not null default 1,
+    relaxed_filters text[] not null default '{}',
+    last_run_at     timestamptz,
+    total_matched   int not null default 0,
+    updated_at      timestamptz not null default now()
+);
+
+-- ─────────────── apollo_job_log ───────────────
+create table if not exists public.apollo_job_log (
+    id        uuid primary key default uuid_generate_v4(),
+    user_id   text not null,
+    plan      text not null,
+    outcome   text not null check (outcome in ('matched','no_lead','error','skipped')),
+    lead_id   text,
+    error     text,
+    ran_at    timestamptz not null default now()
+);
+
+create index if not exists job_log_user_idx on public.apollo_job_log (user_id, ran_at desc);
+
+-- ─────────────── apollo_rate_limits ───────────────
+create table if not exists public.apollo_rate_limits (
+    id               uuid primary key default uuid_generate_v4(),
+    user_id          text not null,
+    date             date not null,
+    daily_limit      int not null,
+    api_calls_used   int not null default 0,
+    created_at       timestamptz not null default now(),
+    unique (user_id, date)
+);
+
+create index if not exists rate_limit_user_idx on public.apollo_rate_limits (user_id, date);
+
 -- ─────────────── RLS scaffolding (commented out until you add Supabase Auth) ───────────────
 -- alter table public.leads enable row level security;
 -- alter table public.generated_emails enable row level security;
