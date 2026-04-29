@@ -1,14 +1,14 @@
 :root {
-  --bg: #0f1115;
-  --panel: #161922;
-  --panel-2: #1d2230;
-  --border: #262b3a;
-  --text: #e6e9ef;
-  --muted: #8b93a7;
-  --primary: #6c8cff;
-  --primary-hover: #5a7bff;
-  --success: #34d399;
-  --danger: #ef4444;
+  --bg: #ffffff;
+  --panel: #f8f9fa;
+  --panel-2: #ffffff;
+  --border: #e9ecef;
+  --text: #212529;
+  --muted: #6c757d;
+  --primary: #5094F8;
+  --primary-hover: #3d7dd4;
+  --success: #A3FA3F;
+  --danger: #dc3545;
   --radius: 10px;
 }
 
@@ -122,7 +122,7 @@ textarea { resize: vertical; min-height: 70px; font-family: inherit; }
   background: var(--muted);
 }
 .dot.ok { background: var(--success); }
-.dot.warn { background: #f59e0b; }
+.dot.warn { background: #ffc107; }
 
 button.primary {
   width: 100%;
