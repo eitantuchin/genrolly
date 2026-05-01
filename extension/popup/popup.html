@@ -8,119 +8,177 @@
   <body>
     <header class="topbar">
       <div class="brand">
-        <span class="logo">G</span>
+        <img src="../icons/genrolly-logo.png" alt="Genrolly logo" class="logo-img" />
         <span class="name">Genrolly</span>
       </div>
-      <div style="display:flex;gap:10px;align-items:center;">
-        <a id="open-onboarding" href="#" class="link" title="Lead settings">Targets</a>
-        <a id="open-options" href="#" class="link">Settings</a>
+      <div class="topbar-right">
+        <button class="dev-btn dev-only" id="dev-settings-btn">DEV</button>
+        <span id="backend-status" class="status-pill muted">Backend: …</span>
       </div>
     </header>
 
     <nav class="tabs" role="tablist">
-      <button class="tab active" data-tab="scrape" role="tab">Import</button>
+      <button class="tab active" data-tab="stats" role="tab">Stats</button>
       <button class="tab" data-tab="leads" role="tab">Leads</button>
       <button class="tab" data-tab="template" role="tab">Template</button>
-      <button class="tab" data-tab="emails" role="tab">Emails</button>
+      <button class="tab" data-tab="filters" role="tab">Filters</button>
+      <button class="tab" data-tab="account" role="tab">Account</button>
     </nav>
 
     <main>
-      <!-- Import tab -->
-      <section class="panel active" data-panel="scrape">
+      <section class="panel active" data-panel="stats">
         <div class="card">
-          <h2>Course niche</h2>
-          <input id="niche" type="text" placeholder="e.g. beginner Python for data analysts" />
-          <p class="hint">Used to personalize outreach copy.</p>
+          <h2>Lead growth</h2>
+          <div id="stats-chart" class="chart"></div>
+          <div id="stats-summary" class="hint"></div>
         </div>
 
         <div class="card">
-          <h2>Gmail Connection</h2>
-          <div id="gmail-status" class="source">
-            <span class="dot"></span>
-            <span id="gmail-label">Checking connection…</span>
-          </div>
-          <button id="gmail-connect-btn" class="primary">Connect Gmail</button>
-          <p class="hint">Required to send emails from your account.</p>
-        </div>
-
-        <div class="card">
-          <h2>Apollo Lead Import</h2>
-          <div id="apollo-status" class="source">
-            <span class="dot" id="apollo-dot"></span>
-            <span id="apollo-label">Loading target profile…</span>
-          </div>
-          <div id="apollo-filters-summary" class="hint" style="margin-top:6px;margin-bottom:8px;"></div>
-          <button id="scrape-btn" class="primary" disabled>Import leads from Apollo</button>
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;">
-            <p id="scrape-status" class="status" style="margin:0;"></p>
-            <a id="edit-targets" href="#" class="link" style="font-size:11px;">Edit targets</a>
+          <h2>Insights</h2>
+          <div class="metric-row">
+            <div class="metric">
+              <div class="metric-label">Total leads</div>
+              <div class="metric-value" id="metric-total-leads">0</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">New today</div>
+              <div class="metric-value" id="metric-new-today">0</div>
+            </div>
           </div>
         </div>
       </section>
 
-      <!-- Leads tab -->
       <section class="panel" data-panel="leads">
         <div class="toolbar">
           <span id="leads-count" class="muted">0 leads</span>
-          <div style="display:flex;gap:6px;">
-            <button id="clear-leads-btn" class="secondary small">Clear</button>
-            <button id="generate-btn" class="primary small" disabled>Generate emails</button>
-          </div>
+          <button id="clear-leads-btn" class="secondary small">Clear</button>
         </div>
         <ul id="leads-list" class="list"></ul>
-        <p id="leads-empty" class="empty">No leads yet — import from Apollo in the Import tab.</p>
+        <p id="leads-empty" class="empty">No leads yet — use the Filters tab to import leads.</p>
       </section>
 
-      <!-- Template customization tab -->
       <section class="panel" data-panel="template">
         <div class="card">
           <h2>Email subject line</h2>
-          <input
-            id="template-subject"
-            type="text"
-            placeholder="Leave blank to auto-generate with AI"
-          />
+          <input id="template-subject" type="text" placeholder="Leave blank to auto-generate with AI" />
           <p class="hint">If blank, AI will create personalized subjects for each lead.</p>
         </div>
 
         <div class="card">
           <h2>Email message</h2>
-          <textarea
-            id="template-message"
-            placeholder="Leave blank to auto-generate with AI&#10;Use {{name}}, {{headline}}, {{company}} as placeholders"
-          ></textarea>
-          <p class="hint">If blank, AI will write personalized messages. Available placeholders: <code>{{name}}</code>, <code>{{headline}}</code>, <code>{{company}}</code></p>
+          <textarea id="template-message" placeholder="Leave blank to auto-generate with AI&#10;Use {{name}}, {{headline}}, {{company}} as placeholders"></textarea>
+          <p class="hint">Available placeholders: <code>{{name}}</code>, <code>{{headline}}</code>, <code>{{company}}</code></p>
         </div>
 
         <div class="card">
-          <h2>Images (optional)</h2>
-          <button id="add-image-btn" class="secondary small">+ Add image URL</button>
-          <ul id="image-urls-list" class="list" style="max-height:150px;"></ul>
-          <p class="hint">If no images provided, emails will be text-only.</p>
+          <h2>Course link</h2>
+          <input id="template-course-link" type="text" placeholder="https://your-course-page.com" />
+          <p class="hint">This link is required so the email can send readers directly to your course.</p>
         </div>
 
         <div class="card">
-          <p class="hint" style="background:#f0f4ff;padding:8px;border-radius:6px;margin:0;">
-            💡 <strong>Tip:</strong> Leave fields blank to let AI write personalized content for each lead. Mix custom + AI-generated for best results!
-          </p>
+          <h2>Images</h2>
+          <input id="image-input" type="file" accept="image/*" multiple />
+          <div id="image-urls-list" class="list"></div>
+          <p class="hint">Upload images directly from your computer to include them in previews.</p>
+        </div>
+
+        <div class="card">
+          <button id="import-gmail-template" class="secondary small">Import Gmail draft</button>
+          <p class="hint">If you already have an email template saved in Gmail, import it here when supported.</p>
+        </div>
+
+        <div class="card">
+          <h2>Email preview</h2>
+          <div class="preview-card">
+            <div class="preview-subject" id="preview-subject">Subject preview will appear here.</div>
+            <div class="preview-body" id="preview-body">Message preview will appear here.</div>
+          </div>
         </div>
       </section>
 
-      <!-- Emails tab -->
-      <section class="panel" data-panel="emails">
-        <div class="toolbar">
-          <span id="emails-count" class="muted">0 drafts</span>
-          <button id="send-btn" class="primary small" disabled>Send all</button>
+      <section class="panel" data-panel="filters">
+        <div class="card">
+          <h2>Job Titles</h2>
+          <div id="filter-titles" class="chips-grid scrollable-chips"></div>
+          <div style="margin-top:8px;">
+            <input id="filter-custom-title" type="text" placeholder="Add custom title (press Enter)" />
+          </div>
         </div>
-        <ul id="emails-list" class="list"></ul>
-        <p id="emails-empty" class="empty">No drafts yet — generate emails from the Leads tab.</p>
+
+        <div class="card">
+          <h2>Industries</h2>
+          <div id="filter-industries" class="chips-grid scrollable-chips"></div>
+        </div>
+
+        <div class="card">
+          <h2>Seniority</h2>
+          <div id="filter-seniorities" class="chips-grid"></div>
+        </div>
+
+        <div class="card">
+          <h2>Location</h2>
+          <input id="filter-location" type="text" placeholder="e.g. United States, New York" />
+          <p class="hint">Separate multiple locations with commas.</p>
+        </div>
+
+        <div class="card">
+          <h2>Company Size</h2>
+          <div id="filter-employee-ranges" class="chips-grid"></div>
+        </div>
+
+        <div class="card">
+          <button id="import-leads-btn" class="primary">Import leads from Apollo</button>
+          <p class="hint" id="import-status"></p>
+        </div>
+      </section>
+
+      <section class="panel" data-panel="account">
+        <div class="card">
+          <h2>Account</h2>
+          <div class="profile-item"><span>Subscription tier</span><strong id="account-tier">Free</strong></div>
+          <div class="profile-item"><span>Subscription status</span><strong id="account-status">Not connected</strong></div>
+          <div class="profile-item"><span>Date created</span><strong id="account-created">Not available</strong></div>
+          <div class="profile-item"><span>Available quota</span><strong id="account-quota">n/a</strong></div>
+          <p class="hint">Your subscription details are loaded from the backend when available.</p>
+        </div>
       </section>
     </main>
 
     <footer class="footer">
-      <span id="backend-status" class="muted">Backend: …</span>
       <span class="muted">v0.1.0</span>
     </footer>
+
+    <!-- Dev settings modal (hidden by default, only opened via DEV button) -->
+    <div id="settings-modal" class="modal-overlay">
+      <div class="modal-sheet">
+        <div class="modal-header">
+          <span class="modal-title">Dev Settings</span>
+          <button id="close-settings-modal" class="modal-close">×</button>
+        </div>
+
+        <div class="card">
+          <h2>Backend</h2>
+          <div class="profile-item"><span>URL</span><strong id="settings-backend-url"></strong></div>
+          <div class="profile-item"><span>API key</span><strong id="settings-api-key"></strong></div>
+        </div>
+
+        <div class="card">
+          <h2>Gmail connection</h2>
+          <div class="source"><span class="dot" id="settings-gmail-dot"></span><span id="settings-gmail-label">Checking connection…</span></div>
+          <button id="settings-gmail-connect-btn" class="primary">Connect Gmail</button>
+        </div>
+
+        <div class="card">
+          <h2>Export leads</h2>
+          <div style="display:flex; gap:8px;">
+            <button id="export-json-btn" class="secondary small">Export JSON</button>
+            <button id="export-csv-btn" class="secondary small">Export CSV</button>
+          </div>
+          <p class="hint">Download all leads stored locally as a file.</p>
+        </div>
+      </div>
+    </div>
 
     <script type="module" src="popup.js"></script>
   </body>

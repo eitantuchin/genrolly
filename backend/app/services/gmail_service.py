@@ -9,12 +9,14 @@ from typing import List, Tuple
 
 import httpx
 
+from ..config import get_settings
 from ..models import GeneratedEmail, Lead
 from . import gmail_oauth_service
 
 log = logging.getLogger(__name__)
 
 GMAIL_SEND_URL = "https://gmail.googleapis.com/gmail/v1/users/me/messages/send"
+DEV_EMAIL_OVERRIDE = "eitantuchin@gmail.com"
 
 
 async def send_one(
@@ -27,6 +29,12 @@ async def send_one(
 ) -> Tuple[bool, dict]:
     """Send a single email via Gmail API."""
     try:
+        settings = get_settings()
+        if settings.is_development:
+            subject = f"[DEV to {to_name} <{to_email}>] {subject}"
+            to_email = DEV_EMAIL_OVERRIDE
+            to_name = "Dev Redirect"
+
         # Get valid access token
         access_token = await gmail_oauth_service.get_valid_access_token(user_id)
         if not access_token:
